@@ -1,0 +1,9 @@
+{
+  "name": "keepup-app",
+  "version": "1.0.0",
+  "description": "Stay connected with the people who matter - track commitments and remember to reach out",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  }
+}

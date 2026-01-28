@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keep Up - Stay Connected with the People Who Matter</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🤝</span>
+                <h1>Keep Up</h1>
+            </div>
+            <p class="tagline">Stay connected with the people who matter</p>
+        </header>
+
+        <main class="main-content">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="people">People</button>
+                <button class="tab-btn" data-tab="commitments">Commitments</button>
+            </div>
+
+            <!-- People Tab -->
+            <div id="people-tab" class="tab-content active">
+                <div class="add-section">
+                    <h2>Add Someone to Keep Up With</h2>
+                    <form id="add-person-form" class="add-form">
+                        <div class="form-row">
+                            <input type="text" id="person-name" placeholder="Name" required>
+                            <select id="person-frequency" required>
+                                <option value="">How often?</option>
+                                <option value="7">Weekly</option>
+                                <option value="14">Every 2 weeks</option>
+                                <option value="30">Monthly</option>
+                                <option value="90">Quarterly</option>
+                            </select>
+                        </div>
+                        <input type="text" id="person-notes" placeholder="Notes (optional) - e.g., 'College friend, loves hiking'">
+                        <button type="submit" class="btn btn-primary">Add Person</button>
+                    </form>
+                </div>
+
+                <div class="list-section">
+                    <h2>Your People <span id="people-count" class="count-badge">0</span></h2>
+                    <div class="filter-sort">
+                        <select id="sort-people">
+                            <option value="overdue">Sort by: Most Overdue</option>
+                            <option value="name">Sort by: Name</option>
+                            <option value="recent">Sort by: Recently Added</option>
+                        </select>
+                    </div>
+                    <div id="people-list" class="card-list">
+                        <p class="empty-state">No people added yet. Add someone above to get started!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Commitments Tab -->
+            <div id="commitments-tab" class="tab-content">
+                <div class="add-section">
+                    <h2>Track a Commitment</h2>
+                    <form id="add-commitment-form" class="add-form">
+                        <div class="form-row">
+                            <select id="commitment-person" required>
+                                <option value="">Who did you commit to?</option>
+                            </select>
+                            <input type="date" id="commitment-due" required>
+                        </div>
+                        <input type="text" id="commitment-text" placeholder="What did you commit to?" required>
+                        <button type="submit" class="btn btn-primary">Add Commitment</button>
+                    </form>
+                </div>
+
+                <div class="list-section">
+                    <h2>Your Commitments <span id="commitments-count" class="count-badge">0</span></h2>
+                    <div class="filter-tabs">
+                        <button class="filter-btn active" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="completed">Completed</button>
+                        <button class="filter-btn" data-filter="all">All</button>
+                    </div>
+                    <div id="commitments-list" class="card-list">
+                        <p class="empty-state">No commitments tracked yet. Add one above!</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Built with care to help you nurture relationships</p>
+        </footer>
+    </div>
+
+    <!-- Modal for logging reach out -->
+    <div id="reach-out-modal" class="modal">
+        <div class="modal-content">
+            <h3>Log Reach Out</h3>
+            <p id="modal-person-name"></p>
+            <textarea id="reach-out-notes" placeholder="What did you talk about? (optional)"></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancel-reach-out">Cancel</button>
+                <button class="btn btn-primary" id="confirm-reach-out">Mark as Reached Out</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
