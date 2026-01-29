@@ -1,17 +1,26 @@
 // Keep Up App - Stay connected with the people who matter
+// Now with Supabase cloud storage!
 
-// Data management
-const Storage = {
-    getPeople: () => JSON.parse(localStorage.getItem('keepup_people')) || [],
-    savePeople: (people) => localStorage.setItem('keepup_people', JSON.stringify(people)),
-    getCommitments: () => JSON.parse(localStorage.getItem('keepup_commitments')) || [],
-    saveCommitments: (commitments) => localStorage.setItem('keepup_commitments', JSON.stringify(commitments))
-};
+// Supabase configuration
+const SUPABASE_URL = 'https://qcgqyleqyrcspbtiqxlh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZ3F5bGVxeXJjc3BidGlxeGxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1NDc2MzIsImV4cCI6MjA4NTEyMzYzMn0._C3HLm9MxabfwTqF6zMfw9pm5gyz2jFfYjCNM0dt-jE';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Get or create a unique user ID for this browser
+function getUserId() {
+    let userId = localStorage.getItem('keepup_user_id');
+    if (!userId) {
+        userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+        localStorage.setItem('keepup_user_id', userId);
+    }
+    return userId;
+}
+
+const USER_ID = getUserId();
 
 // Utility functions
 const Utils = {
-    generateId: () => Date.now().toString(36) + Math.random().toString(36).substr(2),
-
     formatDate: (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -37,17 +46,57 @@ const Utils = {
 // App state
 let currentPersonForModal = null;
 let currentCommitmentFilter = 'pending';
+let peopleCache = [];
+let commitmentsCache = [];
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initTabs();
     initForms();
     initModal();
     initFilters();
+
+    // Load data from Supabase
+    await loadData();
+});
+
+// Load all data from Supabase
+async function loadData() {
+    await Promise.all([loadPeople(), loadCommitments()]);
     renderPeople();
     renderCommitments();
     updatePersonDropdown();
-});
+}
+
+// Load people from Supabase
+async function loadPeople() {
+    const { data, error } = await supabase
+        .from('people')
+        .select('*')
+        .eq('user_id', USER_ID)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error loading people:', error);
+        return;
+    }
+    peopleCache = data || [];
+}
+
+// Load commitments from Supabase
+async function loadCommitments() {
+    const { data, error } = await supabase
+        .from('commitments')
+        .select('*')
+        .eq('user_id', USER_ID)
+        .order('due_date', { ascending: true });
+
+    if (error) {
+        console.error('Error loading commitments:', error);
+        return;
+    }
+    commitmentsCache = data || [];
+}
 
 // Tab switching
 function initTabs() {
@@ -56,11 +105,9 @@ function initTabs() {
         btn.addEventListener('click', () => {
             const tabId = btn.dataset.tab;
 
-            // Update buttons
             tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            // Update content
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById(`${tabId}-tab`).classList.add('active');
         });
@@ -70,7 +117,7 @@ function initTabs() {
 // Form handling
 function initForms() {
     // Add person form
-    document.getElementById('add-person-form').addEventListener('submit', (e) => {
+    document.getElementById('add-person-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const name = document.getElementById('person-name').value.trim();
@@ -79,26 +126,32 @@ function initForms() {
 
         if (!name || !frequency) return;
 
-        const person = {
-            id: Utils.generateId(),
-            name,
-            frequency,
-            notes,
-            lastContact: new Date().toISOString().split('T')[0],
-            createdAt: new Date().toISOString()
-        };
+        const { data, error } = await supabase
+            .from('people')
+            .insert({
+                user_id: USER_ID,
+                name,
+                frequency,
+                notes: notes || null,
+                last_contact: new Date().toISOString().split('T')[0]
+            })
+            .select()
+            .single();
 
-        const people = Storage.getPeople();
-        people.push(person);
-        Storage.savePeople(people);
+        if (error) {
+            console.error('Error adding person:', error);
+            alert('Error adding person. Please try again.');
+            return;
+        }
 
+        peopleCache.unshift(data);
         e.target.reset();
         renderPeople();
         updatePersonDropdown();
     });
 
     // Add commitment form
-    document.getElementById('add-commitment-form').addEventListener('submit', (e) => {
+    document.getElementById('add-commitment-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const personId = document.getElementById('commitment-person').value;
@@ -107,19 +160,25 @@ function initForms() {
 
         if (!personId || !dueDate || !text) return;
 
-        const commitment = {
-            id: Utils.generateId(),
-            personId,
-            dueDate,
-            text,
-            completed: false,
-            createdAt: new Date().toISOString()
-        };
+        const { data, error } = await supabase
+            .from('commitments')
+            .insert({
+                user_id: USER_ID,
+                person_id: personId,
+                text,
+                due_date: dueDate,
+                completed: false
+            })
+            .select()
+            .single();
 
-        const commitments = Storage.getCommitments();
-        commitments.push(commitment);
-        Storage.saveCommitments(commitments);
+        if (error) {
+            console.error('Error adding commitment:', error);
+            alert('Error adding commitment. Please try again.');
+            return;
+        }
 
+        commitmentsCache.push(data);
         e.target.reset();
         renderCommitments();
     });
@@ -137,14 +196,26 @@ function initModal() {
         currentPersonForModal = null;
     });
 
-    document.getElementById('confirm-reach-out').addEventListener('click', () => {
+    document.getElementById('confirm-reach-out').addEventListener('click', async () => {
         if (!currentPersonForModal) return;
 
-        const people = Storage.getPeople();
-        const person = people.find(p => p.id === currentPersonForModal);
+        const today = new Date().toISOString().split('T')[0];
+
+        const { error } = await supabase
+            .from('people')
+            .update({ last_contact: today })
+            .eq('id', currentPersonForModal);
+
+        if (error) {
+            console.error('Error updating contact:', error);
+            alert('Error logging reach out. Please try again.');
+            return;
+        }
+
+        // Update cache
+        const person = peopleCache.find(p => p.id === currentPersonForModal);
         if (person) {
-            person.lastContact = new Date().toISOString().split('T')[0];
-            Storage.savePeople(people);
+            person.last_contact = today;
         }
 
         modal.classList.remove('active');
@@ -176,19 +247,18 @@ function initFilters() {
 // Render people list
 function renderPeople() {
     const peopleList = document.getElementById('people-list');
-    const people = Storage.getPeople();
     const sortBy = document.getElementById('sort-people').value;
 
-    document.getElementById('people-count').textContent = people.length;
+    document.getElementById('people-count').textContent = peopleCache.length;
 
-    if (people.length === 0) {
+    if (peopleCache.length === 0) {
         peopleList.innerHTML = '<p class="empty-state">No people added yet. Add someone above to get started!</p>';
         return;
     }
 
     // Calculate days overdue for each person
-    const peopleWithStatus = people.map(person => {
-        const daysSinceContact = Utils.daysSince(person.lastContact);
+    const peopleWithStatus = peopleCache.map(person => {
+        const daysSinceContact = Utils.daysSince(person.last_contact);
         const daysOverdue = daysSinceContact - person.frequency;
         return { ...person, daysSinceContact, daysOverdue };
     });
@@ -202,7 +272,7 @@ function renderPeople() {
             peopleWithStatus.sort((a, b) => a.name.localeCompare(b.name));
             break;
         case 'recent':
-            peopleWithStatus.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            peopleWithStatus.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             break;
     }
 
@@ -231,7 +301,7 @@ function renderPeople() {
                     <span class="person-status ${statusClass}">${statusText}</span>
                 </div>
                 <div class="person-meta">
-                    Reach out ${frequencyText} · Last contact: ${Utils.formatDate(person.lastContact)}
+                    Reach out ${frequencyText} · Last contact: ${Utils.formatDate(person.last_contact)}
                 </div>
                 ${person.notes ? `<div class="person-notes">"${escapeHtml(person.notes)}"</div>` : ''}
                 <div class="person-actions">
@@ -253,8 +323,7 @@ function renderPeople() {
 // Render commitments list
 function renderCommitments() {
     const commitmentsList = document.getElementById('commitments-list');
-    let commitments = Storage.getCommitments();
-    const people = Storage.getPeople();
+    let commitments = [...commitmentsCache];
 
     // Filter
     if (currentCommitmentFilter === 'pending') {
@@ -264,7 +333,7 @@ function renderCommitments() {
     }
 
     // Update count (always show pending count)
-    const pendingCount = Storage.getCommitments().filter(c => !c.completed).length;
+    const pendingCount = commitmentsCache.filter(c => !c.completed).length;
     document.getElementById('commitments-count').textContent = pendingCount;
 
     if (commitments.length === 0) {
@@ -280,16 +349,16 @@ function renderCommitments() {
     // Sort by due date (most urgent first)
     commitments.sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        return new Date(a.dueDate) - new Date(b.dueDate);
+        return new Date(a.due_date) - new Date(b.due_date);
     });
 
     commitmentsList.innerHTML = commitments.map(commitment => {
-        const person = people.find(p => p.id === commitment.personId);
+        const person = peopleCache.find(p => p.id === commitment.person_id);
         const personName = person ? person.name : 'Unknown';
-        const daysUntil = Utils.daysUntil(commitment.dueDate);
+        const daysUntil = Utils.daysUntil(commitment.due_date);
 
         let dueClass = '';
-        let dueText = Utils.formatDate(commitment.dueDate);
+        let dueText = Utils.formatDate(commitment.due_date);
 
         if (!commitment.completed) {
             if (daysUntil < 0) {
@@ -333,10 +402,9 @@ function renderCommitments() {
 // Update person dropdown in commitment form
 function updatePersonDropdown() {
     const select = document.getElementById('commitment-person');
-    const people = Storage.getPeople();
 
     select.innerHTML = '<option value="">Who did you commit to?</option>' +
-        people.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+        peopleCache.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
 }
 
 // Action functions
@@ -348,50 +416,93 @@ function openReachOutModal(personId, personName) {
 }
 
 function addCommitmentFor(personId) {
-    // Switch to commitments tab
     document.querySelector('[data-tab="commitments"]').click();
-    // Pre-select the person
     document.getElementById('commitment-person').value = personId;
-    // Focus on the text input
     document.getElementById('commitment-text').focus();
 }
 
-function deletePerson(personId) {
-    if (!confirm('Are you sure you want to remove this person? Their commitments will remain.')) return;
+async function deletePerson(personId) {
+    if (!confirm('Are you sure you want to remove this person? Their commitments will also be deleted.')) return;
 
-    const people = Storage.getPeople().filter(p => p.id !== personId);
-    Storage.savePeople(people);
+    const { error } = await supabase
+        .from('people')
+        .delete()
+        .eq('id', personId);
+
+    if (error) {
+        console.error('Error deleting person:', error);
+        alert('Error deleting person. Please try again.');
+        return;
+    }
+
+    peopleCache = peopleCache.filter(p => p.id !== personId);
+    commitmentsCache = commitmentsCache.filter(c => c.person_id !== personId);
     renderPeople();
+    renderCommitments();
     updatePersonDropdown();
 }
 
-function completeCommitment(commitmentId) {
-    const commitments = Storage.getCommitments();
-    const commitment = commitments.find(c => c.id === commitmentId);
+async function completeCommitment(commitmentId) {
+    const { error } = await supabase
+        .from('commitments')
+        .update({
+            completed: true,
+            completed_at: new Date().toISOString()
+        })
+        .eq('id', commitmentId);
+
+    if (error) {
+        console.error('Error completing commitment:', error);
+        alert('Error completing commitment. Please try again.');
+        return;
+    }
+
+    const commitment = commitmentsCache.find(c => c.id === commitmentId);
     if (commitment) {
         commitment.completed = true;
-        commitment.completedAt = new Date().toISOString();
-        Storage.saveCommitments(commitments);
-        renderCommitments();
+        commitment.completed_at = new Date().toISOString();
     }
+    renderCommitments();
 }
 
-function uncompleteCommitment(commitmentId) {
-    const commitments = Storage.getCommitments();
-    const commitment = commitments.find(c => c.id === commitmentId);
+async function uncompleteCommitment(commitmentId) {
+    const { error } = await supabase
+        .from('commitments')
+        .update({
+            completed: false,
+            completed_at: null
+        })
+        .eq('id', commitmentId);
+
+    if (error) {
+        console.error('Error uncompleting commitment:', error);
+        alert('Error updating commitment. Please try again.');
+        return;
+    }
+
+    const commitment = commitmentsCache.find(c => c.id === commitmentId);
     if (commitment) {
         commitment.completed = false;
-        delete commitment.completedAt;
-        Storage.saveCommitments(commitments);
-        renderCommitments();
+        commitment.completed_at = null;
     }
+    renderCommitments();
 }
 
-function deleteCommitment(commitmentId) {
+async function deleteCommitment(commitmentId) {
     if (!confirm('Are you sure you want to delete this commitment?')) return;
 
-    const commitments = Storage.getCommitments().filter(c => c.id !== commitmentId);
-    Storage.saveCommitments(commitments);
+    const { error } = await supabase
+        .from('commitments')
+        .delete()
+        .eq('id', commitmentId);
+
+    if (error) {
+        console.error('Error deleting commitment:', error);
+        alert('Error deleting commitment. Please try again.');
+        return;
+    }
+
+    commitmentsCache = commitmentsCache.filter(c => c.id !== commitmentId);
     renderCommitments();
 }
 
