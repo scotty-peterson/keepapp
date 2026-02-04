@@ -5,7 +5,7 @@
 const SUPABASE_URL = 'https://qcgqyleqyrcspbtiqxlh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZ3F5bGVxeXJjc3BidGlxeGxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1NDc2MzIsImV4cCI6MjA4NTEyMzYzMn0._C3HLm9MxabfwTqF6zMfw9pm5gyz2jFfYjCNM0dt-jE';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabase = null;
 
 // Get or create a unique user ID for this browser
 function getUserId() {
@@ -73,14 +73,21 @@ let commitmentsCache = [];
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize tabs first so UI is responsive
     initTabs();
     initForms();
     initModal();
     initFilters();
     updateGreeting();
 
-    // Load data from Supabase
-    await loadData();
+    // Initialize Supabase client
+    if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Load data from Supabase
+        await loadData();
+    } else {
+        console.warn('Supabase not loaded - running in offline mode');
+    }
 });
 
 // Update greeting based on time of day
@@ -103,6 +110,8 @@ async function loadData() {
 
 // Load people from Supabase
 async function loadPeople() {
+    if (!supabase) return;
+
     const { data, error } = await supabase
         .from('people')
         .select('*')
@@ -118,6 +127,8 @@ async function loadPeople() {
 
 // Load commitments from Supabase
 async function loadCommitments() {
+    if (!supabase) return;
+
     const { data, error } = await supabase
         .from('commitments')
         .select('*')
