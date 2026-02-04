@@ -143,33 +143,24 @@ async function loadCommitments() {
     commitmentsCache = data || [];
 }
 
-// Tab switching - using event delegation for reliability
-function initTabs() {
-    const tabsContainer = document.querySelector('.tabs');
-    if (!tabsContainer) {
-        console.error('Tabs container not found');
-        return;
+// Global tab switching function (called from onclick in HTML)
+function switchTab(tabId) {
+    // Update button states
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const targetTab = document.getElementById(`${tabId}-tab`);
+    if (targetTab) {
+        targetTab.classList.add('active');
     }
+}
 
-    // Use event delegation on the parent container
-    tabsContainer.addEventListener('click', (e) => {
-        const btn = e.target.closest('.tab-btn');
-        if (!btn) return;
-
-        const tabId = btn.dataset.tab;
-        if (!tabId) return;
-
-        // Update button states
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
-        // Update tab content
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        const targetTab = document.getElementById(`${tabId}-tab`);
-        if (targetTab) {
-            targetTab.classList.add('active');
-        }
-    });
+// Tab switching - kept as backup
+function initTabs() {
+    // Tabs now use onclick handlers in HTML for reliability
 }
 
 // Form handling
