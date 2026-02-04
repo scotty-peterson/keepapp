@@ -73,6 +73,7 @@ let commitmentsCache = [];
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded fired');
     // Initialize tabs first so UI is responsive
     initTabs();
     initForms();
@@ -144,16 +145,24 @@ async function loadCommitments() {
 
 // Tab switching
 function initTabs() {
+    console.log('initTabs called');
     const tabBtns = document.querySelectorAll('.tab-btn');
+    console.log('Found tab buttons:', tabBtns.length);
+
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const tabId = btn.dataset.tab;
+            console.log('Tab clicked:', tabId);
 
             tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`${tabId}-tab`).classList.add('active');
+            const targetTab = document.getElementById(`${tabId}-tab`);
+            console.log('Target tab element:', targetTab);
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
         });
     });
 }
