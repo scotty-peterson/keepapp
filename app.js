@@ -1,5 +1,5 @@
-// Keep Up App - Stay connected with the people who matter
-// Now with Supabase cloud storage!
+// Keep Up - Nurture Your Relationships
+// A warm, friendly way to stay connected with the people who matter
 
 // Supabase configuration
 const SUPABASE_URL = 'https://qcgqyleqyrcspbtiqxlh.supabase.co';
@@ -23,7 +23,7 @@ const USER_ID = getUserId();
 const Utils = {
     formatDate: (dateString) => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     },
 
     daysSince: (dateString) => {
@@ -40,6 +40,28 @@ const Utils = {
         today.setHours(0, 0, 0, 0);
         date.setHours(0, 0, 0, 0);
         return Math.floor((date - today) / (1000 * 60 * 60 * 24));
+    },
+
+    getInitial: (name) => {
+        return name.charAt(0).toUpperCase();
+    },
+
+    getTimeOfDay: () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good morning';
+        if (hour < 17) return 'Good afternoon';
+        return 'Good evening';
+    },
+
+    // Gentle, non-judgmental time descriptions
+    friendlyTimeSince: (days) => {
+        if (days === 0) return 'Today';
+        if (days === 1) return 'Yesterday';
+        if (days < 7) return `${days} days ago`;
+        if (days < 14) return 'Last week';
+        if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+        if (days < 60) return 'Last month';
+        return `${Math.floor(days / 30)} months ago`;
     }
 };
 
@@ -55,17 +77,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     initForms();
     initModal();
     initFilters();
+    updateGreeting();
 
     // Load data from Supabase
     await loadData();
 });
 
+// Update greeting based on time of day
+function updateGreeting() {
+    const greetingEl = document.getElementById('greeting-text');
+    if (greetingEl) {
+        greetingEl.textContent = Utils.getTimeOfDay();
+    }
+}
+
 // Load all data from Supabase
 async function loadData() {
     await Promise.all([loadPeople(), loadCommitments()]);
+    renderToday();
     renderPeople();
     renderCommitments();
     updatePersonDropdown();
+    updateStats();
 }
 
 // Load people from Supabase
@@ -140,14 +173,21 @@ function initForms() {
 
         if (error) {
             console.error('Error adding person:', error);
-            alert('Error adding person. Please try again.');
+            alert('Something went wrong. Please try again.');
             return;
         }
 
         peopleCache.unshift(data);
         e.target.reset();
+
+        // Close the drawer after adding
+        const drawer = document.querySelector('.add-person-drawer');
+        if (drawer) drawer.removeAttribute('open');
+
+        renderToday();
         renderPeople();
         updatePersonDropdown();
+        updateStats();
     });
 
     // Add commitment form
@@ -174,13 +214,14 @@ function initForms() {
 
         if (error) {
             console.error('Error adding commitment:', error);
-            alert('Error adding commitment. Please try again.');
+            alert('Something went wrong. Please try again.');
             return;
         }
 
         commitmentsCache.push(data);
         e.target.reset();
         renderCommitments();
+        updateStats();
     });
 
     // Sort people
@@ -208,7 +249,7 @@ function initModal() {
 
         if (error) {
             console.error('Error updating contact:', error);
-            alert('Error logging reach out. Please try again.');
+            alert('Something went wrong. Please try again.');
             return;
         }
 
@@ -220,6 +261,11 @@ function initModal() {
 
         modal.classList.remove('active');
         currentPersonForModal = null;
+
+        // Show celebration!
+        showCelebration();
+
+        renderToday();
         renderPeople();
     });
 
@@ -230,6 +276,16 @@ function initModal() {
             currentPersonForModal = null;
         }
     });
+}
+
+// Celebration animation
+function showCelebration() {
+    const celebration = document.getElementById('celebration');
+    celebration.classList.add('active');
+
+    setTimeout(() => {
+        celebration.classList.remove('active');
+    }, 1500);
 }
 
 // Filter handling
@@ -244,7 +300,69 @@ function initFilters() {
     });
 }
 
-// Render people list
+// Update stats
+function updateStats() {
+    document.getElementById('stat-people').textContent = peopleCache.length;
+    const pendingPromises = commitmentsCache.filter(c => !c.completed).length;
+    document.getElementById('stat-promises').textContent = pendingPromises;
+}
+
+// Render Today dashboard - the heart of the app
+function renderToday() {
+    const container = document.getElementById('today-cards');
+
+    // Find people who would love to hear from you
+    const peopleWithStatus = peopleCache.map(person => {
+        const daysSinceContact = Utils.daysSince(person.last_contact);
+        const daysUntilDue = person.frequency - daysSinceContact;
+        return { ...person, daysSinceContact, daysUntilDue };
+    });
+
+    // Show people who are due or almost due (within 3 days of their cycle)
+    const needsAttention = peopleWithStatus
+        .filter(p => p.daysUntilDue <= 3)
+        .sort((a, b) => a.daysUntilDue - b.daysUntilDue)
+        .slice(0, 5); // Show top 5
+
+    if (needsAttention.length === 0) {
+        container.innerHTML = '<p class="empty-state gentle">You\'re all caught up. Take a moment to appreciate your connections.</p>';
+        return;
+    }
+
+    container.innerHTML = needsAttention.map(person => {
+        const isReady = person.daysUntilDue <= 0;
+        const nudgeClass = isReady ? 'nudge-ready' : 'nudge-gentle';
+        const nudgeText = isReady ? 'Ready to connect' : 'Coming up soon';
+
+        const frequencyText = person.frequency === 7 ? 'weekly' :
+                             person.frequency === 14 ? 'every couple weeks' :
+                             person.frequency === 30 ? 'monthly' : 'every few months';
+
+        return `
+            <div class="friend-card">
+                <div class="friend-card-top">
+                    <div class="friend-avatar">${Utils.getInitial(person.name)}</div>
+                    <div class="friend-info">
+                        <div class="friend-name">${escapeHtml(person.name)}</div>
+                        <div class="friend-context">Last connected ${Utils.friendlyTimeSince(person.daysSinceContact)}</div>
+                    </div>
+                    <span class="friend-nudge ${nudgeClass}">${nudgeText}</span>
+                </div>
+                ${person.notes ? `<div class="friend-note">${escapeHtml(person.notes)}</div>` : ''}
+                <div class="friend-actions">
+                    <button class="action-btn action-primary" onclick="openReachOutModal('${person.id}', '${escapeHtml(person.name)}')">
+                        We connected
+                    </button>
+                    <button class="action-btn action-secondary" onclick="addCommitmentFor('${person.id}')">
+                        Add a promise
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Render people roster
 function renderPeople() {
     const peopleList = document.getElementById('people-list');
     const sortBy = document.getElementById('sort-people').value;
@@ -252,21 +370,21 @@ function renderPeople() {
     document.getElementById('people-count').textContent = peopleCache.length;
 
     if (peopleCache.length === 0) {
-        peopleList.innerHTML = '<p class="empty-state">No people added yet. Add someone above to get started!</p>';
+        peopleList.innerHTML = '<p class="empty-state gentle">No one here yet. Add someone you\'d like to stay connected with.</p>';
         return;
     }
 
-    // Calculate days overdue for each person
+    // Calculate status for each person
     const peopleWithStatus = peopleCache.map(person => {
         const daysSinceContact = Utils.daysSince(person.last_contact);
-        const daysOverdue = daysSinceContact - person.frequency;
-        return { ...person, daysSinceContact, daysOverdue };
+        const daysUntilDue = person.frequency - daysSinceContact;
+        return { ...person, daysSinceContact, daysUntilDue };
     });
 
     // Sort
     switch (sortBy) {
-        case 'overdue':
-            peopleWithStatus.sort((a, b) => b.daysOverdue - a.daysOverdue);
+        case 'needs-love':
+            peopleWithStatus.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
             break;
         case 'name':
             peopleWithStatus.sort((a, b) => a.name.localeCompare(b.name));
@@ -279,40 +397,32 @@ function renderPeople() {
     peopleList.innerHTML = peopleWithStatus.map(person => {
         let statusClass, statusText;
 
-        if (person.daysOverdue > 0) {
-            statusClass = 'status-overdue';
-            statusText = `${person.daysOverdue} days overdue`;
-        } else if (person.daysOverdue > -7) {
-            statusClass = 'status-due-soon';
-            statusText = `Due in ${Math.abs(person.daysOverdue)} days`;
+        if (person.daysUntilDue <= 0) {
+            statusClass = 'status-ready';
+            statusText = 'Ready';
+        } else if (person.daysUntilDue <= 7) {
+            statusClass = 'status-soon';
+            statusText = 'Soon';
         } else {
-            statusClass = 'status-good';
-            statusText = `${Math.abs(person.daysOverdue)} days left`;
+            statusClass = 'status-connected';
+            statusText = 'Connected';
         }
 
-        const frequencyText = person.frequency === 7 ? 'weekly' :
-                             person.frequency === 14 ? 'every 2 weeks' :
-                             person.frequency === 30 ? 'monthly' : 'quarterly';
+        const frequencyText = person.frequency === 7 ? 'Weekly' :
+                             person.frequency === 14 ? 'Bi-weekly' :
+                             person.frequency === 30 ? 'Monthly' : 'Quarterly';
 
         return `
-            <div class="person-card">
-                <div class="person-card-header">
-                    <span class="person-name">${escapeHtml(person.name)}</span>
-                    <span class="person-status ${statusClass}">${statusText}</span>
+            <div class="roster-row" onclick="openReachOutModal('${person.id}', '${escapeHtml(person.name)}')">
+                <div class="roster-avatar">${Utils.getInitial(person.name)}</div>
+                <div class="roster-details">
+                    <div class="roster-name">${escapeHtml(person.name)}</div>
+                    <div class="roster-meta">${frequencyText} · ${Utils.friendlyTimeSince(person.daysSinceContact)}</div>
                 </div>
-                <div class="person-meta">
-                    Reach out ${frequencyText} · Last contact: ${Utils.formatDate(person.last_contact)}
-                </div>
-                ${person.notes ? `<div class="person-notes">"${escapeHtml(person.notes)}"</div>` : ''}
-                <div class="person-actions">
-                    <button class="btn btn-success btn-small" onclick="openReachOutModal('${person.id}', '${escapeHtml(person.name)}')">
-                        ✓ Log Reach Out
-                    </button>
-                    <button class="btn btn-secondary btn-small" onclick="addCommitmentFor('${person.id}')">
-                        + Add Commitment
-                    </button>
-                    <button class="btn-delete" onclick="deletePerson('${person.id}')" title="Delete">
-                        🗑️
+                <span class="roster-status ${statusClass}">${statusText}</span>
+                <div class="roster-actions-mini" onclick="event.stopPropagation()">
+                    <button class="mini-btn delete" onclick="deletePerson('${person.id}')" title="Remove">
+                        ×
                     </button>
                 </div>
             </div>
@@ -338,15 +448,15 @@ function renderCommitments() {
 
     if (commitments.length === 0) {
         const message = currentCommitmentFilter === 'pending'
-            ? 'No pending commitments. Great job staying on top of things!'
+            ? 'No open promises. You\'re doing great!'
             : currentCommitmentFilter === 'completed'
-            ? 'No completed commitments yet.'
-            : 'No commitments tracked yet. Add one above!';
-        commitmentsList.innerHTML = `<p class="empty-state">${message}</p>`;
+            ? 'No promises kept yet. That\'s okay.'
+            : 'No promises tracked yet. That\'s okay.';
+        commitmentsList.innerHTML = `<p class="empty-state gentle">${message}</p>`;
         return;
     }
 
-    // Sort by due date (most urgent first)
+    // Sort by due date
     commitments.sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
         return new Date(a.due_date) - new Date(b.due_date);
@@ -354,7 +464,7 @@ function renderCommitments() {
 
     commitmentsList.innerHTML = commitments.map(commitment => {
         const person = peopleCache.find(p => p.id === commitment.person_id);
-        const personName = person ? person.name : 'Unknown';
+        const personName = person ? person.name : 'Someone';
         const daysUntil = Utils.daysUntil(commitment.due_date);
 
         let dueClass = '';
@@ -363,12 +473,13 @@ function renderCommitments() {
         if (!commitment.completed) {
             if (daysUntil < 0) {
                 dueClass = 'overdue';
-                dueText = `${Math.abs(daysUntil)} days overdue`;
+                dueText = `${Math.abs(daysUntil)} days ago`;
             } else if (daysUntil === 0) {
-                dueClass = 'overdue';
-                dueText = 'Due today!';
+                dueClass = 'soon';
+                dueText = 'Today';
             } else if (daysUntil <= 3) {
-                dueText = `Due in ${daysUntil} days`;
+                dueClass = 'soon';
+                dueText = `In ${daysUntil} days`;
             }
         }
 
@@ -376,22 +487,22 @@ function renderCommitments() {
             <div class="commitment-card ${commitment.completed ? 'completed' : ''}">
                 <div class="commitment-card-header">
                     <span class="commitment-text">${escapeHtml(commitment.text)}</span>
-                    ${commitment.completed ? '<span class="completed-badge">Completed</span>' : ''}
+                    ${commitment.completed ? '<span class="completed-badge">Kept</span>' : ''}
                 </div>
-                <div class="commitment-person">To: ${escapeHtml(personName)}</div>
-                <div class="commitment-due ${dueClass}">Due: ${dueText}</div>
+                <div class="commitment-person">To ${escapeHtml(personName)}</div>
+                <div class="commitment-due ${dueClass}">${dueText}</div>
                 <div class="commitment-actions">
                     ${!commitment.completed ? `
-                        <button class="btn btn-success btn-small" onclick="completeCommitment('${commitment.id}')">
-                            ✓ Mark Complete
+                        <button class="btn btn-warm btn-small" onclick="completeCommitment('${commitment.id}')">
+                            I kept this promise
                         </button>
                     ` : `
                         <button class="btn btn-secondary btn-small" onclick="uncompleteCommitment('${commitment.id}')">
-                            ↩ Mark Incomplete
+                            Reopen
                         </button>
                     `}
-                    <button class="btn-delete" onclick="deleteCommitment('${commitment.id}')" title="Delete">
-                        🗑️
+                    <button class="btn-delete" onclick="deleteCommitment('${commitment.id}')" title="Remove">
+                        ×
                     </button>
                 </div>
             </div>
@@ -403,14 +514,14 @@ function renderCommitments() {
 function updatePersonDropdown() {
     const select = document.getElementById('commitment-person');
 
-    select.innerHTML = '<option value="">Who did you commit to?</option>' +
+    select.innerHTML = '<option value="">Who did you promise?</option>' +
         peopleCache.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
 }
 
 // Action functions
 function openReachOutModal(personId, personName) {
     currentPersonForModal = personId;
-    document.getElementById('modal-person-name').textContent = `Reaching out to ${personName}`;
+    document.getElementById('modal-person-name').textContent = `Catching up with ${personName}`;
     document.getElementById('reach-out-notes').value = '';
     document.getElementById('reach-out-modal').classList.add('active');
 }
@@ -422,7 +533,7 @@ function addCommitmentFor(personId) {
 }
 
 async function deletePerson(personId) {
-    if (!confirm('Are you sure you want to remove this person? Their commitments will also be deleted.')) return;
+    if (!confirm('Remove this person from your list?')) return;
 
     const { error } = await supabase
         .from('people')
@@ -431,15 +542,17 @@ async function deletePerson(personId) {
 
     if (error) {
         console.error('Error deleting person:', error);
-        alert('Error deleting person. Please try again.');
+        alert('Something went wrong. Please try again.');
         return;
     }
 
     peopleCache = peopleCache.filter(p => p.id !== personId);
     commitmentsCache = commitmentsCache.filter(c => c.person_id !== personId);
+    renderToday();
     renderPeople();
     renderCommitments();
     updatePersonDropdown();
+    updateStats();
 }
 
 async function completeCommitment(commitmentId) {
@@ -453,7 +566,7 @@ async function completeCommitment(commitmentId) {
 
     if (error) {
         console.error('Error completing commitment:', error);
-        alert('Error completing commitment. Please try again.');
+        alert('Something went wrong. Please try again.');
         return;
     }
 
@@ -462,7 +575,12 @@ async function completeCommitment(commitmentId) {
         commitment.completed = true;
         commitment.completed_at = new Date().toISOString();
     }
+
+    // Mini celebration for keeping a promise
+    showCelebration();
+
     renderCommitments();
+    updateStats();
 }
 
 async function uncompleteCommitment(commitmentId) {
@@ -475,8 +593,8 @@ async function uncompleteCommitment(commitmentId) {
         .eq('id', commitmentId);
 
     if (error) {
-        console.error('Error uncompleting commitment:', error);
-        alert('Error updating commitment. Please try again.');
+        console.error('Error updating commitment:', error);
+        alert('Something went wrong. Please try again.');
         return;
     }
 
@@ -486,10 +604,11 @@ async function uncompleteCommitment(commitmentId) {
         commitment.completed_at = null;
     }
     renderCommitments();
+    updateStats();
 }
 
 async function deleteCommitment(commitmentId) {
-    if (!confirm('Are you sure you want to delete this commitment?')) return;
+    if (!confirm('Remove this promise?')) return;
 
     const { error } = await supabase
         .from('commitments')
@@ -498,12 +617,13 @@ async function deleteCommitment(commitmentId) {
 
     if (error) {
         console.error('Error deleting commitment:', error);
-        alert('Error deleting commitment. Please try again.');
+        alert('Something went wrong. Please try again.');
         return;
     }
 
     commitmentsCache = commitmentsCache.filter(c => c.id !== commitmentId);
     renderCommitments();
+    updateStats();
 }
 
 // Utility to escape HTML
