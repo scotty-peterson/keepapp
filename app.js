@@ -73,21 +73,21 @@ let commitmentsCache = [];
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOMContentLoaded fired');
-    // Initialize tabs first so UI is responsive
-    initTabs();
-    initForms();
-    initModal();
-    initFilters();
-    updateGreeting();
+    // Initialize UI components first so app is responsive
+    try { initTabs(); } catch (e) { console.error('initTabs error:', e); }
+    try { initForms(); } catch (e) { console.error('initForms error:', e); }
+    try { initModal(); } catch (e) { console.error('initModal error:', e); }
+    try { initFilters(); } catch (e) { console.error('initFilters error:', e); }
+    try { updateGreeting(); } catch (e) { console.error('updateGreeting error:', e); }
 
     // Initialize Supabase client
     if (window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        // Load data from Supabase
-        await loadData();
-    } else {
-        console.warn('Supabase not loaded - running in offline mode');
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            await loadData();
+        } catch (e) {
+            console.error('Supabase initialization error:', e);
+        }
     }
 });
 
@@ -143,27 +143,32 @@ async function loadCommitments() {
     commitmentsCache = data || [];
 }
 
-// Tab switching
+// Tab switching - using event delegation for reliability
 function initTabs() {
-    console.log('initTabs called');
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    console.log('Found tab buttons:', tabBtns.length);
+    const tabsContainer = document.querySelector('.tabs');
+    if (!tabsContainer) {
+        console.error('Tabs container not found');
+        return;
+    }
 
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabId = btn.dataset.tab;
-            console.log('Tab clicked:', tabId);
+    // Use event delegation on the parent container
+    tabsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tab-btn');
+        if (!btn) return;
 
-            tabBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        const tabId = btn.dataset.tab;
+        if (!tabId) return;
 
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            const targetTab = document.getElementById(`${tabId}-tab`);
-            console.log('Target tab element:', targetTab);
-            if (targetTab) {
-                targetTab.classList.add('active');
-            }
-        });
+        // Update button states
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const targetTab = document.getElementById(`${tabId}-tab`);
+        if (targetTab) {
+            targetTab.classList.add('active');
+        }
     });
 }
 
