@@ -157,5 +157,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
+    <script>
+    window.addEventListener('load', function() {
+        if (typeof initForms === 'undefined') {
+            alert('ERROR: app.js did not load!');
+        } else if (typeof window.supabase === 'undefined') {
+            alert('ERROR: Supabase library did not load!');
+        }
+    });
+    </script>
 </body>
 </html>
