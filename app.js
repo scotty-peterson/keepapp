@@ -173,42 +173,50 @@ function initForms() {
         const frequency = parseInt(document.getElementById('person-frequency').value);
         const notes = document.getElementById('person-notes').value.trim();
 
-        if (!name || !frequency) return;
+        if (!name || !frequency) {
+            alert('Please enter a name and select a frequency.');
+            return;
+        }
 
         if (!supabase) {
             alert('Database not connected. Please refresh the page.');
             return;
         }
 
-        const { data, error } = await supabase
-            .from('people')
-            .insert({
-                user_id: USER_ID,
-                name,
-                frequency,
-                notes: notes || null,
-                last_contact: new Date().toISOString().split('T')[0]
-            })
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('people')
+                .insert({
+                    user_id: USER_ID,
+                    name,
+                    frequency,
+                    notes: notes || null,
+                    last_contact: new Date().toISOString().split('T')[0]
+                })
+                .select()
+                .single();
 
-        if (error) {
-            console.error('Error adding person:', error);
-            alert('Something went wrong. Please try again.');
-            return;
+            if (error) {
+                console.error('Error adding person:', error);
+                alert('Database error: ' + error.message);
+                return;
+            }
+
+            peopleCache.unshift(data);
+            e.target.reset();
+
+            // Close the drawer after adding
+            const drawer = document.querySelector('.add-person-drawer');
+            if (drawer) drawer.removeAttribute('open');
+
+            renderPeople();
+            renderToday();
+            updatePersonDropdown();
+            updateStats();
+        } catch (err) {
+            console.error('Unexpected error:', err);
+            alert('Unexpected error: ' + err.message);
         }
-
-        peopleCache.unshift(data);
-        e.target.reset();
-
-        // Close the drawer after adding
-        const drawer = document.querySelector('.add-person-drawer');
-        if (drawer) drawer.removeAttribute('open');
-
-        renderToday();
-        renderPeople();
-        updatePersonDropdown();
-        updateStats();
     });
 
     // Add commitment form
