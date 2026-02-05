@@ -33,7 +33,7 @@
             <nav class="tabs">
                 <button class="tab-btn active" data-tab="today" onclick="switchTab('today')">Today</button>
                 <button class="tab-btn" data-tab="people" onclick="switchTab('people')">People</button>
-                <button class="tab-btn" data-tab="commitments" onclick="switchTab('commitments')">Promises</button>
+                <button class="tab-btn" data-tab="commitments" onclick="switchTab('commitments')">Commitments</button>
             </nav>
 
             <!-- Today Tab - The Dashboard -->
@@ -54,7 +54,7 @@
                     </div>
                     <div class="stat-card">
                         <span class="stat-number" id="stat-promises">0</span>
-                        <span class="stat-label">promises to keep</span>
+                        <span class="stat-label">commitments to keep</span>
                     </div>
                 </div>
             </div>
@@ -68,7 +68,7 @@
 
                 <div class="roster-controls">
                     <select id="sort-people" class="sort-select">
-                        <option value="needs-love">Needs some love</option>
+                        <option value="needs-love">Reach out soon</option>
                         <option value="name">Alphabetical</option>
                         <option value="recent">Recently added</option>
                     </select>
@@ -102,28 +102,28 @@
             <!-- Commitments Tab -->
             <div id="commitments-tab" class="tab-content">
                 <div class="add-section">
-                    <h2>Track a Promise</h2>
+                    <h2>Track a Commitment</h2>
                     <form id="add-commitment-form" class="add-form">
                         <div class="form-row">
                             <select id="commitment-person" required>
-                                <option value="">Who did you promise?</option>
+                                <option value="">Who's it for?</option>
                             </select>
                             <input type="date" id="commitment-due" required>
                         </div>
-                        <input type="text" id="commitment-text" placeholder="What did you promise?" required>
+                        <input type="text" id="commitment-text" placeholder="What's the commitment?" required>
                         <button type="submit" class="btn btn-warm">Remember this</button>
                     </form>
                 </div>
 
                 <div class="list-section">
-                    <h2>Your Promises <span id="commitments-count" class="count-badge">0</span></h2>
+                    <h2>Your Commitments <span id="commitments-count" class="count-badge">0</span></h2>
                     <div class="filter-tabs">
                         <button class="filter-btn active" data-filter="pending">Open</button>
                         <button class="filter-btn" data-filter="completed">Kept</button>
                         <button class="filter-btn" data-filter="all">All</button>
                     </div>
                     <div id="commitments-list" class="card-list">
-                        <p class="empty-state gentle">No promises tracked yet. That's okay.</p>
+                        <p class="empty-state gentle">No commitments tracked yet. That's okay.</p>
                     </div>
                 </div>
             </div>

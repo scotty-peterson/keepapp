@@ -175,6 +175,11 @@ function initForms() {
 
         if (!name || !frequency) return;
 
+        if (!supabase) {
+            alert('Database not connected. Please refresh the page.');
+            return;
+        }
+
         const { data, error } = await supabase
             .from('people')
             .insert({
@@ -215,6 +220,11 @@ function initForms() {
         const text = document.getElementById('commitment-text').value.trim();
 
         if (!personId || !dueDate || !text) return;
+
+        if (!supabase) {
+            alert('Database not connected. Please refresh the page.');
+            return;
+        }
 
         const { data, error } = await supabase
             .from('commitments')
@@ -370,7 +380,7 @@ function renderToday() {
                         We connected
                     </button>
                     <button class="action-btn action-secondary" onclick="addCommitmentFor('${person.id}')">
-                        Add a promise
+                        Add a commitment
                     </button>
                 </div>
             </div>
@@ -464,10 +474,10 @@ function renderCommitments() {
 
     if (commitments.length === 0) {
         const message = currentCommitmentFilter === 'pending'
-            ? 'No open promises. You\'re doing great!'
+            ? 'No open commitments. You\'re doing great!'
             : currentCommitmentFilter === 'completed'
-            ? 'No promises kept yet. That\'s okay.'
-            : 'No promises tracked yet. That\'s okay.';
+            ? 'No commitments completed yet. That\'s okay.'
+            : 'No commitments tracked yet. That\'s okay.';
         commitmentsList.innerHTML = `<p class="empty-state gentle">${message}</p>`;
         return;
     }
@@ -510,7 +520,7 @@ function renderCommitments() {
                 <div class="commitment-actions">
                     ${!commitment.completed ? `
                         <button class="btn btn-warm btn-small" onclick="completeCommitment('${commitment.id}')">
-                            I kept this promise
+                            Mark complete
                         </button>
                     ` : `
                         <button class="btn btn-secondary btn-small" onclick="uncompleteCommitment('${commitment.id}')">
@@ -530,7 +540,7 @@ function renderCommitments() {
 function updatePersonDropdown() {
     const select = document.getElementById('commitment-person');
 
-    select.innerHTML = '<option value="">Who did you promise?</option>' +
+    select.innerHTML = '<option value="">Who\'s it for?</option>' +
         peopleCache.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
 }
 
@@ -592,7 +602,7 @@ async function completeCommitment(commitmentId) {
         commitment.completed_at = new Date().toISOString();
     }
 
-    // Mini celebration for keeping a promise
+    // Mini celebration for completing a commitment
     showCelebration();
 
     renderCommitments();
@@ -624,7 +634,7 @@ async function uncompleteCommitment(commitmentId) {
 }
 
 async function deleteCommitment(commitmentId) {
-    if (!confirm('Remove this promise?')) return;
+    if (!confirm('Remove this commitment?')) return;
 
     const { error } = await supabase
         .from('commitments')
