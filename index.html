@@ -8,6 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        var activeBtn = document.querySelector('.tab-btn[data-tab="' + tabId + '"]');
+        if (activeBtn) activeBtn.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        var targetTab = document.getElementById(tabId + '-tab');
+        if (targetTab) targetTab.classList.add('active');
+    }
+    </script>
 </head>
 <body>
     <div class="app-container">
