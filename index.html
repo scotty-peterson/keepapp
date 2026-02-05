@@ -156,11 +156,13 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
     <script>
     window.addEventListener('load', function() {
-        if (typeof initForms === 'undefined') {
-            alert('ERROR: app.js did not load!');
+        if (!window.APP_JS_LOADED) {
+            alert('ERROR: app.js file did not load at all!');
+        } else if (typeof initForms === 'undefined') {
+            alert('ERROR: app.js loaded but crashed before defining functions!');
         } else if (typeof window.supabase === 'undefined') {
             alert('ERROR: Supabase library did not load!');
         }

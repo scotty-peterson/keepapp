@@ -1,5 +1,6 @@
 // Keep Up - Nurture Your Relationships
 // A warm, friendly way to stay connected with the people who matter
+window.APP_JS_LOADED = true;
 
 // Supabase configuration
 const SUPABASE_URL = 'https://qcgqyleqyrcspbtiqxlh.supabase.co';
